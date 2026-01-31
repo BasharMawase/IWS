@@ -52,6 +52,10 @@ def update_dashboard():
     socketio.emit('history_update', history)
 
 @app.route('/')
+def welcome():
+    return render_template('welcome.html')
+
+@app.route('/admin')
 def admin_dashboard():
     return render_template('index.html')
 
@@ -141,6 +145,10 @@ def update_quantity():
         return jsonify({"status": "error", "message": "Update failed"}), 500
 
 # --- Order Management ---
+@app.route('/worker')
+def worker_view():
+    return render_template('worker.html')
+
 @app.route('/api/workers', methods=['GET'])
 def get_workers():
     return jsonify(db.get_workers())

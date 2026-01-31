@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מסוף עובד - מערכת סריקה</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0c0c0c;
+            color: #eee;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #333;
+            margin-bottom: 1rem;
+        }
+
+        .order-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .order-id {
+            color: var(--primary-color);
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        #worker-login {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="worker-login">
+        <h2 style="color: white; margin-bottom: 2rem;">הזדהות עובד</h2>
+        <input type="text" id="worker-name-input" class="form-control" placeholder="שם העובד..."
+            style="font-size: 1.5rem; text-align: center; margin-bottom: 1rem; max-width: 400px;">
+
+        <select id="worker-warehouse-select" class="form-control"
+            style="font-size: 1.2rem; margin-bottom: 1.5rem; max-width: 400px; text-align: center;">
+            <!-- Populated from API -->
+        </select>
+
+        <button class="btn" onclick="loginWorker()" style="font-size: 1.2rem; padding: 1rem 3rem;">כניסה למערכת</button>
+    </div>
+
+    <div class="header">
+        <div class="brand">⚡ Inventory Worker</div>
+        <div id="current-info" style="font-size: 0.9rem; text-align: left;">
+            עובד: <span id="display-worker-name" style="color:var(--primary-color)">-</span><br>
+            מחסן: <span id="display-warehouse-name" style="color:var(--secondary-color)">-</span>
+        </div>
+    </div>
+
+    <div id="orders-list">
+        <!-- Orders will appear here -->
+    </div>
+
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script>
+        let workerName = localStorage.getItem('worker_name');
+        let selectedWarehouseId = localStorage.getItem('worker_warehouse_id');
+        let selectedWarehouseName = localStorage.getItem('worker_warehouse_name');
+        let scanBuffer = '';
+        let scanTimeout;
+
+        async function initWorker() {
+            await loadWarehouses();
+            
+            if (workerName && selectedWarehouseId) {
+                showMainInterface();
+            } else {
+                document.getElementById('worker-login').style.display = 'flex';
+            }
+        }
+
+        async function loadWarehouses() {
+            try {
+                const res = await fetch('/api/warehouses');
+                const warehouses = await res.json();
+                const select = document.getElementById('worker-warehouse-select');
+                select.innerHTML = warehouses.map(w => `<option value="${w.id}">${w.name}</option>`).join('');
+            } catch (e) {
+                console.error("Failed to load warehouses", e);
+            }
+        }
+
+        function showMainInterface() {
+            document.getElementById('worker-login').style.display = 'none';
+            document.getElementById('display-worker-name').textContent = workerName;
+            document.getElementById('display-warehouse-name').textContent = selectedWarehouseName;
+            loadOrders();
+        }
+
+        async function loadOrders() {
+            if (!selectedWarehouseId) return;
+            const res = await fetch(`/api/orders/active?warehouse_id=${selectedWarehouseId}`);
+            const orders = await res.json();
+            const container = document.getElementById('orders-list');
+            
+            container.innerHTML = orders.map(o => `
+                <div class="order-card">
+                    <div>
+                        <div class="order-id">הזמנה #${o.id}</div>
+                        <div style="font-size: 0.9rem; color: #888;">${o.business_name}</div>
+                    </div>
+                    <div style="text-align: left;">
+                        <span class="status-badge status-${o.status}">${o.status}</span>
+                        <div style="font-size: 0.8rem; margin-top: 5px;">${o.total_qty - (o.remaining_qty || 0)} / ${o.total_qty} יח'</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Wedge Listener for barcode scanners acting as keyboards
+        document.addEventListener('keydown', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            if (e.key === 'Enter') {
+                if (scanBuffer.length > 2) handleWorkerScan(scanBuffer);
+                scanBuffer = '';
+            } else if (e.key.length === 1) {
+                scanBuffer += e.key;
+                clearTimeout(scanTimeout);
+                scanTimeout = setTimeout(() => scanBuffer = '', 100);
+            }
+        });
+
+        function handleWorkerScan(barcode) {
+            console.log("Scanner Input:", barcode);
+            
+            // Find an order that needs this barcode in our warehouse
+            recordPick(barcode);
+        }
+
+        async function recordPick(barcode) {
+            try {
+                const ordersRes = await fetch(`/api/orders/active?warehouse_id=${selectedWarehouseId}`);
+                const orders = await ordersRes.json();
+                
+                if (orders.length === 0) {
+                     showToast("אין הזמנות ממתינות לליקוט", "error");
+                     return;
+                }
+                
+                const orderId = orders[0].id;
+                
+                const res = await fetch('/api/scan/pick', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        order_id: orderId,
+                        barcode: barcode,
+                        warehouse_id: selectedWarehouseId,
+                        worker_name: workerName
+                    })
+                });
+                
+                const result = await res.json();
+                if (result.status === 'success') {
+                    showToast(result.message, "success");
+                    loadOrders(); 
+                } else {
+                    showToast(result.message, "error");
+                }
+            } catch (e) {
+                showToast("שגיאה בתהליך הליקוט", "error");
+            }
+        }
+
+        function showToast(msg, type) {
+            const toast = document.createElement('div');
+            toast.textContent = msg;
+            toast.className = 'toast ' + type;
+            toast.style.cssText = `
+                position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+                padding: 10px 20px; border-radius: 30px; color: white;
+                background: ${type === 'success' ? '#4caf50' : '#f44336'};
+                z-index: 10000; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2500);
+        }
+
+        function loginWorker() {
+            const name = document.getElementById('worker-name-input').value;
+            const whSelect = document.getElementById('worker-warehouse-select');
+            
+            if (name) {
+                workerName = name;
+                selectedWarehouseId = whSelect.value;
+                selectedWarehouseName = whSelect.options[whSelect.selectedIndex].text;
+                
+                localStorage.setItem('worker_name', name);
+                localStorage.setItem('worker_warehouse_id', selectedWarehouseId);
+                localStorage.setItem('worker_warehouse_name', selectedWarehouseName);
+                
+                showMainInterface();
+            } else {
+                alert("נא להזין שם עובד");
+            }
+        }
+
+        initWorker();
+    </script>
+</body>
+
+</html>
