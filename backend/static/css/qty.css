@@ -1,0 +1,22 @@
+.qty-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-qty {
+    background-color: #333;
+    border: 1px solid #555;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-qty:hover {
+    background-color: #444;
+}

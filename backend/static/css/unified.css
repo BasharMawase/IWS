@@ -1,0 +1,55 @@
+.unified-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.unified-table th,
+.unified-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid #333;
+}
+
+.pending-row {
+    background-color: rgba(255, 152, 0, 0.05);
+}
+
+.pending-row td {
+    color: #ffd700;
+}
+
+.btn-link {
+    background-color: transparent;
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    padding: 0.3rem 0.8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.btn-link:hover {
+    background-color: var(--primary-color);
+    color: #000;
+}
+
+.btn-link.listening {
+    background-color: var(--primary-color);
+    color: #000;
+    box-shadow: 0 0 10px var(--primary-color);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <title>הזמנה #{{ order.id }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Rubik', sans-serif;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+            color: #000;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+
+        .meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            font-size: 1.2rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 40px;
+        }
+
+        th,
+        td {
+            border: 1px solid #000;
+            padding: 12px;
+            text-align: right;
+            font-size: 1.1rem;
+        }
+
+        th {
+            background: #f0f0f0;
+        }
+
+        .footer {
+            margin-top: 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .signature-line {
+            border-top: 1px solid #000;
+            width: 200px;
+            text-align: center;
+            padding-top: 5px;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+            }
+
+            button {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>📦 תעודת ליקוט / فاتورة طلب</h1>
+        <p>Inventory System</p>
+    </div>
+
+    <div class="meta">
+        <div>
+            <strong>לקוח / العميل:</strong> {{ order.business_name }}
+        </div>
+        <div>
+            <strong>הזמנה / رقم الطلب:</strong> #{{ order.id }}<br>
+            <span style="font-size: 0.9em;">{{ order.timestamp }}</span>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>שם מוצר / اسم المنتج</th>
+                <th>כמות / الكمية</th>
+                <th>בדיקה / فحص</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td><strong>{{ item.name }}</strong></td>
+                <td style="font-size: 1.2em;">{{ item.quantity }}</td>
+                <td style="width: 50px;">☐</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <div>
+            <p>סה"כ פריטים / مجموع العناصر: {{ items|length }}</p>
+        </div>
+        <div>
+            <div class="signature-line">חתימת מלקט / التوقيع</div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function () {
+            window.print();
+        }
+    </script>
+</body>
+
+</html>

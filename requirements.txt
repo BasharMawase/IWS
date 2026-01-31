@@ -1,0 +1,6 @@
+Flask
+flask-socketio
+eventlet
+pyserial
+pandas
+plotly
